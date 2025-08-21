@@ -1,0 +1,55 @@
+test_that("Test init yamls", {
+  init_yamls() |>
+    fs::dir_exists() |>
+    expect_true()
+})
+
+test_that("Test Files", {
+  # The example configuration templates should be installed in the package's
+  # extdata directory.  Use system.file() to locate them.
+  system.file("extdata", "config.yml", package = "rpgconn") |>
+    fs::file_exists() |>
+    expect_true()
+  system.file("extdata", "options.yml", package = "rpgconn") |>
+    fs::file_exists() |>
+    expect_true()
+})
+
+test_that("Test Edit", {
+  edit_config() |>
+    fs::file_exists() |>
+    expect_true()
+  edit_options() |>
+    fs::file_exists() |>
+    expect_true()
+})
+
+ck_names <- c(
+  "host", "port", "dbname", "drv", "connect_timeout",
+  "timezone", "application_name", "client_encoding",
+  "user", "password"
+)
+
+test_that("Test conn string validation", {
+  Sys.setenv(RPG_CONN_STRING = "test")
+  expect_error(dbc(), "Unable to make connection")
+
+  Sys.setenv(RPG_CONN_STRING = "user=...;password=...;host=...;port=...;dbname=...")
+  expect_error(dbc(), 'invalid integer value "..." for connection option "port"')
+
+  expect_named(dbc(args_only = TRUE), ck_names, ignore.order = TRUE)
+})
+
+test_that("Test conn config validation", {
+  expect_error(
+    object = dbc(cfg = "local"),
+    regexp = "Database name must be specified when using arg cfg"
+  )
+  expect_error(
+    object = dbc("fajdksaf", "test"),
+    regexp = "Connection config not found"
+  )
+  ck_names2 <- ck_names[!ck_names %in% c("user", "password")]
+  args <- dbc(cfg = "local", db = "test", args_only = TRUE)
+  expect_named(args, ck_names2, ignore.order = TRUE)
+})
